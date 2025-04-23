@@ -1,0 +1,132 @@
+
+import React, { useState } from 'react';
+import ReactDOM from 'react-dom/client';
+
+const tarotDeck = [
+  { name: "The Fool", upright: "Beginnings, innocence", reversed: "Recklessness, risk-taking" },
+  { name: "The Magician", upright: "Manifestation, resourcefulness", reversed: "Manipulation, untapped talents" },
+  { name: "The High Priestess", upright: "Intuition, sacred knowledge", reversed: "Secrets, withdrawal" },
+  // Add more cards as needed
+];
+
+function drawCards(deck, count = 3) {
+  const shuffled = [...deck].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count).map(card => ({
+    ...card,
+    orientation: Math.random() > 0.5 ? 'upright' : 'reversed'
+  }));
+}
+
+function App() {
+  const [question, setQuestion] = useState('');
+  const [cards, setCards] = useState([]);
+  const [interpretation, setInterpretation] = useState('');
+
+  const handleDraw = async () => {
+    const drawn = drawCards(tarotDeck);
+    setCards(drawn);
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_OPENAI_KEY'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [{
+          role: 'system',
+          content: 'You are a poetic tarot reader.'
+        }, {
+          role: 'user',
+          content: `Question: ${question}
+Cards:
+` +
+                   drawn.map(c => `- ${c.name} (${c.orientation}): ${c[c.orientation]}`).join('\n') +
+                   `
+Please provide an insightful interpretation.`
+        }]
+      })
+    });
+    const data = await response.json();
+    setInterpretation(data.choices[0].message.content);
+  };
+
+  return (
+    <div>
+      <h1>Arcana</h1>
+      <p className="subtitle">A poetic tarot reading tool</p>
+      <input
+        placeholder="Whatâ€™s your question?"
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
+      />
+      <button onClick={handleDraw}>Draw 3 Cards</button>
+      {cards.map((card, idx) => (
+        <div key={idx} className="card">
+          <strong>{card.name} ({card.orientation})</strong>
+          <p>{card[card.orientation]}</p>
+        </div>
+      ))}
+      {interpretation && <div className="interpretation">{interpretation}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+body {
+  background: url('https://www.transparenttextures.com/patterns/paper-fibers.png') repeat;
+  font-family: 'Cormorant Garamond', serif;
+  color: #3a2c2a;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 12px rgba(0,0,0,0.1);
+  border-radius: 8px;
+}
+
+h1 {
+  font-size: 2.75rem;
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+p.subtitle {
+  text-align: center;
+  font-style: italic;
+  margin-bottom: 2rem;
+}
+
+input, button {
+  font-family: 'EB Garamond', serif;
+  padding: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #c1b6aa;
+  width: 100%;
+}
+
+.card {
+  background: #fffaf3;
+  border: 1px solid #c1b6aa;
+  padding: 1rem;
+  border-radius: 6px;
+  margin: 0.5rem 0;
+  box-shadow: 3px 3px 8px rgba(0,0,0,0.05);
+}
+
+.interpretation {
+  margin-top: 2rem;
+  background: #fffdf6;
+  padding: 1.5rem;
+  border-left: 5px solid #d4bfa3;
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.15rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
